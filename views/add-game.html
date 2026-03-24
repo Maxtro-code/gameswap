@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Ajouter un jeu - GameSwap</title>
+</head>
+<body>
+<h1>Ajouter un jeu à ma collection</h1>
+<form action="/add-game" method="POST">
+    <input type="text" name="title" placeholder="Titre du jeu" required>
+    <select name="platform">
+        <option value="PS5">PS5</option>
+        <option value="Xbox">Xbox Series</option>
+        <option value="Switch">Nintendo Switch</option>
+        <option value="PC">PC</option>
+    </select>
+    <button type="submit">Ajouter</button>
+</form>
+<br>
+<a href="/">Retour</a>
+</body>
+</html>
