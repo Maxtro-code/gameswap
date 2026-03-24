@@ -3,20 +3,208 @@
 <head>
     <meta charset="UTF-8">
     <title>Ajouter un jeu - GameSwap</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .search-container {
+            max-width: 700px;
+        }
+
+        #search-input {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border-radius: 8px;
+            border: 2px solid #0f3460;
+            background: #e9ecef;
+            margin-bottom: 10px;
+        }
+
+        #results {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .game-card {
+            background: #0f3460;
+            border-radius: 10px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: 0.3s;
+        }
+
+        .game-card:hover {
+            border-color: #00d2ff;
+            transform: translateY(-4px);
+        }
+
+        .game-card img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+        }
+
+        .game-card .info {
+            padding: 10px;
+        }
+
+        .game-card .info h3 {
+            font-size: 14px;
+            color: #00d2ff;
+            margin: 0 0 5px 0;
+        }
+
+        .game-card .info p {
+            font-size: 12px;
+            color: #aaa;
+            margin: 0;
+        }
+
+        #loading {
+            display: none;
+            color: #4cc9f0;
+            margin-top: 10px;
+        }
+
+        #confirmation {
+            display: none;
+            background: #0f3460;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            border-left: 5px solid #00d2ff;
+        }
+
+        #confirmation h2 {
+            margin-top: 0;
+        }
+
+        #confirmation img {
+            width: 150px;
+            border-radius: 8px;
+            float: right;
+            margin-left: 15px;
+        }
+    </style>
 </head>
 <body>
-<h1>Ajouter un jeu à ma collection</h1>
-<form action="/add-game" method="POST">
-    <input type="text" name="title" placeholder="Titre du jeu" required>
-    <select name="platform">
-        <option value="PS5">PS5</option>
-        <option value="Xbox">Xbox Series</option>
-        <option value="Switch">Nintendo Switch</option>
-        <option value="PC">PC</option>
-    </select>
-    <button type="submit">Ajouter</button>
-</form>
+<h1>🔍 Ajouter un jeu à ma collection</h1>
+
+<div class="search-container">
+    <input
+            type="text"
+            id="search-input"
+            placeholder="Rechercher un jeu... (ex: Zelda, FIFA, GTA)"
+            autocomplete="off"
+    >
+    <p id="loading">⏳ Recherche en cours...</p>
+    <div id="results"></div>
+
+    <!-- Confirmation avant ajout -->
+    <div id="confirmation">
+        <img id="confirm-image" src="" alt="">
+        <h2 id="confirm-title"></h2>
+        <p>🕹️ <strong>Plateformes :</strong> <span id="confirm-platforms"></span></p>
+        <p>📅 <strong>Sortie :</strong> <span id="confirm-released"></span></p>
+        <p>⭐ <strong>Note :</strong> <span id="confirm-rating"></span>/5</p>
+
+        <form action="/add-game" method="POST">
+            <input type="hidden" name="title" id="form-title">
+            <input type="hidden" name="platform" id="form-platform">
+            <input type="hidden" name="image" id="form-image">
+            <button type="submit">✅ Ajouter à ma collection</button>
+            <button type="button" onclick="cancelSelection()" style="background:#555; margin-left:10px;">
+                ❌ Annuler
+            </button>
+        </form>
+    </div>
+</div>
+
 <br>
-<a href="/">Retour</a>
+<a href="/">⬅ Retour à l'accueil</a>
+
+<script>
+    let searchTimeout;
+
+    document.getElementById('search-input').addEventListener('input', function () {
+        clearTimeout(searchTimeout);
+        const query = this.value.trim();
+
+        if (query.length < 2) {
+            document.getElementById('results').innerHTML = '';
+            return;
+        }
+
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('results').innerHTML = '';
+        document.getElementById('confirmation').style.display = 'none';
+
+        // Petit délai pour ne pas spammer l'API à chaque lettre
+        searchTimeout = setTimeout(() => searchGames(query), 400);
+    });
+
+    async function searchGames(query) {
+        try {
+            const response = await fetch(`/api/search-games?q=${encodeURIComponent(query)}`);
+            const games = await response.json();
+
+            document.getElementById('loading').style.display = 'none';
+
+            const container = document.getElementById('results');
+            container.innerHTML = '';
+
+            if (games.length === 0) {
+                container.innerHTML = '<p>Aucun jeu trouvé.</p>';
+                return;
+            }
+
+            games.forEach(game => {
+                const card = document.createElement('div');
+                card.className = 'game-card';
+                card.innerHTML = `
+                    <img src="${game.image || '/img/no-image.png'}" alt="${game.name}">
+                    <div class="info">
+                        <h3>${game.name}</h3>
+                        <p>${game.released || 'Date inconnue'}</p>
+                    </div>
+                `;
+                card.addEventListener('click', () => selectGame(game));
+                container.appendChild(card);
+            });
+
+        } catch (err) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('results').innerHTML = '<p>Erreur lors de la recherche.</p>';
+        }
+    }
+
+    function selectGame(game) {
+        // Remplir la confirmation
+        document.getElementById('confirm-image').src = game.image || '';
+        document.getElementById('confirm-title').textContent = game.name;
+        document.getElementById('confirm-platforms').textContent = game.platforms;
+        document.getElementById('confirm-released').textContent = game.released || 'Inconnue';
+        document.getElementById('confirm-rating').textContent = game.rating || '?';
+
+        // Remplir le formulaire caché
+        document.getElementById('form-title').value = game.name;
+        document.getElementById('form-platform').value = game.platforms;
+        document.getElementById('form-image').value = game.image || '';
+
+        // Afficher la confirmation
+        document.getElementById('confirmation').style.display = 'block';
+        document.getElementById('results').innerHTML = '';
+        document.getElementById('search-input').value = '';
+
+        // Scroll vers la confirmation
+        document.getElementById('confirmation').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cancelSelection() {
+        document.getElementById('confirmation').style.display = 'none';
+    }
+</script>
 </body>
 </html>

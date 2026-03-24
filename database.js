@@ -1,38 +1,50 @@
-const sqlite3 = require('sqlite3').verbose();
+const mysql = require('mysql2');
 
-// Connexion à la base (crée le fichier s'il n'existe pas)
-const db = new sqlite3.Database('./gameswap.db', (err) => {
-    if (err) console.error("Erreur de connexion :", err.message);
-    else console.log("Connecté à la base de données SQLite.");
+const db = mysql.createPool({
+    host: process.env.DB_HOST || 'localhost',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'gameswap',
+    waitForConnections: true,
 });
 
-// Création de la table 'users'
-db.serialize(() => {
-    db.run(`CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE,
-        password TEXT
-    )`);
-});
+// On récupère une version "promise" du pool pour pouvoir utiliser async/await
+const dbPromise = db.promise();
 
-// Création de la table 'games'
-db.run(`CREATE TABLE IF NOT EXISTS games (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL,
-    platform TEXT,
-    owner_id INTEGER,
-    FOREIGN KEY(owner_id) REFERENCES users(id)
-)`);
+// Création des tables au démarrage
+async function initDB() {
+    await dbPromise.query(`
+        CREATE TABLE IF NOT EXISTS users (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            username VARCHAR(50) UNIQUE NOT NULL,
+            password VARCHAR(255) NOT NULL
+        )
+    `);
 
-// Création de la table 'exchanges'
-db.run(`CREATE TABLE IF NOT EXISTS exchanges (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    game_id INTEGER,       -- Le jeu demandé
-    requester_id INTEGER,  -- Celui qui veut le jeu
-    status TEXT DEFAULT 'en_attente', -- 'en_attente', 'accepte', 'refuse'
-    FOREIGN KEY(game_id) REFERENCES games(id),
-    FOREIGN KEY(requester_id) REFERENCES users(id)
-)`);
+    await dbPromise.query(`
+        CREATE TABLE IF NOT EXISTS games (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            title VARCHAR(100) NOT NULL,
+            platform VARCHAR(50),
+            owner_id INT,
+            FOREIGN KEY (owner_id) REFERENCES users(id)
+        )
+    `);
 
+    await dbPromise.query(`
+        CREATE TABLE IF NOT EXISTS exchanges (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            game_id INT,
+            requester_id INT,
+            status VARCHAR(20) DEFAULT 'en_attente',
+            FOREIGN KEY (game_id) REFERENCES games(id),
+            FOREIGN KEY (requester_id) REFERENCES users(id)
+        )
+    `);
 
-module.exports = db;
+    console.log('Base de données initialisée.');
+}
+
+initDB().catch(console.error);
+
+module.exports = dbPromise;
