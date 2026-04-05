@@ -1,0 +1,216 @@
+/* ============================================================
+   GameSwap — Styles personnalisés (complément Bulma)
+   ============================================================ */
+
+:root {
+    --gs-dark:      #1a1a2e;
+    --gs-primary:   #16213e;
+    --gs-accent:    #0f3460;
+    --gs-highlight: #e94560;
+    --gs-gradient:  linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+}
+
+/* === GLOBAL === */
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #f0f2f5;
+    min-height: 100vh;
+}
+
+.main-content {
+    padding-top: 5rem;
+    min-height: calc(100vh - 168px);
+}
+
+/* === NAVBAR === */
+.navbar.is-dark {
+    background: var(--gs-gradient) !important;
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+}
+
+.brand-logo {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 800;
+    font-size: 1.4rem !important;
+    letter-spacing: -0.5px;
+}
+
+.brand-logo .fas {
+    color: var(--gs-highlight);
+}
+
+/* === HERO === */
+.hero-section {
+    background: var(--gs-gradient);
+    color: white;
+    padding: 2rem 2.5rem;
+    border-radius: 16px;
+    position: relative;
+    overflow: hidden;
+}
+
+.hero-section::before {
+    content: '🎮';
+    position: absolute;
+    right: 2rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 5rem;
+    opacity: 0.15;
+}
+
+.hero-section .title,
+.hero-section .subtitle {
+    color: white !important;
+}
+
+/* === CARTES DE JEUX === */
+.game-card {
+    border-radius: 12px;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border: 2px solid transparent;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.game-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+}
+
+.game-card.is-clickable {
+    cursor: pointer;
+}
+
+.game-card.selected-card {
+    border-color: var(--gs-highlight);
+    box-shadow: 0 0 0 3px rgba(233, 69, 96, 0.2);
+}
+
+.game-card .card-image img {
+    object-fit: cover;
+    width: 100%;
+    height: 100%;
+}
+
+.game-card .card-content {
+    flex-grow: 1;
+}
+
+.game-card .card-footer-item {
+    font-weight: 600;
+    transition: background 0.2s;
+}
+
+.game-card .card-footer-item:hover {
+    background: #f5f5f5;
+}
+
+/* === AUTH BOX === */
+.auth-box {
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+    margin-top: 2rem;
+    padding: 2.5rem;
+}
+
+.auth-box .title {
+    color: var(--gs-dark);
+}
+
+.auth-box .input:focus {
+    border-color: var(--gs-accent);
+    box-shadow: 0 0 0 3px rgba(15, 52, 96, 0.15);
+}
+
+/* === CONFIRMATION BOX === */
+.confirmation-box {
+    border-left: 4px solid #48c78e;
+    background: #f6fff9;
+    border-radius: 12px;
+}
+
+/* === EXCHANGE BOX === */
+.exchange-box {
+    border-radius: 12px;
+    transition: box-shadow 0.2s;
+}
+
+.exchange-box:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+/* === NOTIFICATIONS FLASH === */
+.flash-notification {
+    position: fixed;
+    top: 70px;
+    right: 20px;
+    z-index: 100;
+    max-width: 400px;
+    border-radius: 12px;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to   { transform: translateX(0);    opacity: 1; }
+}
+
+/* === TABS === */
+.tabs.is-boxed li.is-active a {
+    border-color: var(--gs-accent) !important;
+    color: var(--gs-accent) !important;
+    font-weight: 600;
+}
+
+/* === BOUTONS === */
+.button.is-primary {
+    background: var(--gs-highlight);
+    border-color: var(--gs-highlight);
+    font-weight: 600;
+}
+
+.button.is-primary:hover {
+    background: #d63a54;
+    border-color: #d63a54;
+}
+
+/* === FOOTER === */
+.footer {
+    background: var(--gs-dark);
+    color: #ccc;
+    padding: 2rem 1.5rem;
+}
+
+.footer strong {
+    color: white;
+}
+
+/* === RESPONSIVE === */
+@media screen and (max-width: 768px) {
+    .hero-section::before {
+        display: none;
+    }
+    .hero-section {
+        padding: 1.5rem;
+    }
+    .auth-box {
+        padding: 1.5rem;
+    }
+    .flash-notification {
+        left: 10px;
+        right: 10px;
+        max-width: none;
+    }
+}
+
+/* === IMAGE FALLBACK === */
+.image img {
+    background: #eee;
+}

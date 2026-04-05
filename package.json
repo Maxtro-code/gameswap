@@ -1,0 +1,26 @@
+{
+  "name": "gameswap",
+  "version": "2.0.0",
+  "description": "GameSwap - Plateforme d'échange de jeux vidéo (BTS SIO SLAM)",
+  "main": "backend/app.js",
+  "scripts": {
+    "start": "node backend/app.js",
+    "dev:back": "nodemon backend/app.js",
+    "dev:front": "cd frontend && npm run dev",
+    "install:front": "cd frontend && npm install",
+    "build": "cd frontend && npm run build",
+    "setup": "npm install && npm run install:front"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.3.1",
+    "express": "^4.21.0",
+    "express-session": "^1.18.1",
+    "mysql2": "^3.20.0",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}

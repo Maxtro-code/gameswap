@@ -1,0 +1,664 @@
+= GameSwap v2 — Mode Opératoire
+:author: Projet BTS SIO SLAM
+:revdate: 2026
+:toc: left
+:toclevels: 3
+:sectnums:
+:icons: font
+:source-highlighter: highlight.js
+
+== Présentation du projet
+
+**GameSwap** est une application web permettant aux utilisateurs d'échanger des jeux vidéo entre eux.
+
+=== Fonctionnalités
+
+* Inscription et connexion sécurisée (hashage bcrypt)
+* Recherche de jeux via l'API externe RAWG.io
+* Ajout de jeux à sa collection personnelle (avec image, plateforme, note)
+* Consultation du catalogue complet des jeux disponibles
+* Envoi de demandes d'échange à d'autres utilisateurs
+* Gestion des demandes reçues (accepter / refuser)
+* Suivi de l'état de ses propres demandes
+
+=== Stack technique
+
+[cols="1,3", options="header"]
+|===
+| Couche            | Technologie
+| Frontend          | Vue.js 3 Composition API + Bulma CSS + Vite
+| Backend           | Node.js + Express.js (API REST)
+| Base de données   | MySQL (via mysql2)
+| Authentification  | Sessions Express + bcrypt
+| API externe       | RAWG.io (base de données de jeux vidéo)
+|===
+
+
+== Architecture technique
+
+=== Schéma d'architecture
+
+[source,text]
+----
+┌──────────────────────────────────────────────────────┐
+│                    NAVIGATEUR                         │
+│  ┌────────────────────────────────────────────────┐  │
+│  │  Vue.js 3 (SPA – Single Page Application)      │  │
+│  │  - Composants .vue (Single File Components)     │  │
+│  │  - Vue Router (navigation côté client)          │  │
+│  │  - Composition API (ref, computed, onMounted)   │  │
+│  │  - Bulma CSS (framework CSS)                    │  │
+│  │  - Vite (bundler / serveur de dev)              │  │
+│  └───────────────────┬────────────────────────────┘  │
+│                      │ fetch() — requêtes HTTP        │
+└──────────────────────┼────────────────────────────────┘
+                       │
+           ┌───────────▼───────────────┐
+           │   EXPRESS.JS (Node.js)    │
+           │   Port 3000               │
+           │                           │
+           │  /api/auth/*    (auth)    │
+           │  /api/games/*   (jeux)    │
+           │  /api/exchanges/* (éch.)  │
+           └──┬───────────────┬────────┘
+              │               │
+     ┌────────▼───────┐  ┌───▼──────────────┐
+     │   MySQL        │  │  API RAWG.io     │
+     │   gameswap     │  │  (recherche de   │
+     │  - users       │  │   jeux externe)  │
+     │  - games       │  └──────────────────┘
+     │  - exchanges   │
+     └────────────────┘
+----
+
+=== Principe SPA
+
+Le frontend est une *SPA* : une seule page HTML (`index.html`) est chargée au démarrage. Vue Router gère ensuite la navigation côté client sans rechargement de page. Le serveur Express renvoie `index.html` pour toute route non-API (mécanisme catch-all).
+
+=== Composants `.vue` (Single File Components)
+
+Un SFC regroupe dans un même fichier `.vue` les trois couches d'un composant :
+
+[source,html]
+----
+<template>
+    <!-- HTML du composant -->
+</template>
+
+<script setup>
+    // Logique JavaScript (Composition API)
+</script>
+
+<style scoped>
+    /* CSS propre au composant (optionnel) */
+</style>
+----
+
+Avantages : encapsulation (chaque composant est autonome), réutilisabilité (import dans d'autres composants), lisibilité (template + logique + style au même endroit).
+
+
+== Prérequis et installation
+
+=== Logiciels requis
+
+* **Node.js** v18+ — https://nodejs.org
+* **MySQL** 8+ (ou MariaDB 10+)
+* **Git** (recommandé)
+
+=== Étapes d'installation
+
+[source,bash]
+----
+# 1. Cloner ou copier le projet
+cd gameswap
+
+# 2. Installer les dépendances backend
+npm install
+
+# 3. Installer les dépendances frontend
+cd frontend
+npm install
+cd ..
+
+# 4. Créer la base de données MySQL
+mysql -u root -p -e "CREATE DATABASE gameswap CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+
+# 5. Configurer les variables d'environnement
+cp .env.example .env
+# => Éditer .env avec vos identifiants MySQL et votre clé RAWG
+----
+
+=== Obtenir une clé API RAWG
+
+. Aller sur https://rawg.io/apidocs
+. Créer un compte gratuit
+. Copier la clé API dans le fichier `.env`
+
+=== Lancement en développement
+
+Ouvrir *deux terminaux* :
+
+[source,bash]
+----
+# Terminal 1 — Backend Express (port 3000)
+npm run dev:back
+
+# Terminal 2 — Frontend Vite (port 5173)
+npm run dev:front
+----
+
+Ouvrir http://localhost:5173 dans le navigateur. Le proxy Vite redirige automatiquement les appels `/api/*` vers le backend sur le port 3000.
+
+=== Build de production
+
+[source,bash]
+----
+# Compiler le frontend (génère dans backend/public/)
+cd frontend
+npm run build
+
+# Lancer le serveur qui sert tout
+cd ..
+npm start
+# => http://localhost:3000
+----
+
+
+== Structure des fichiers
+
+[source,text]
+----
+gameswap/
+├── .env.example                ← Modèle de configuration
+├── .gitignore
+├── package.json                ← Dépendances backend (npm)
+│
+├── backend/                    ← Code serveur (Node.js / Express)
+│   ├── app.js                  ← Point d'entrée Express
+│   ├── database.js             ← Connexion MySQL + init tables
+│   ├── middleware/
+│   │   └── auth.js             ← Middleware d'authentification
+│   └── routes/
+│       ├── auth.js             ← Inscription / connexion / déconnexion
+│       ├── games.js            ← CRUD jeux + recherche RAWG
+│       └── exchanges.js        ← Demandes d'échange
+│
+└── frontend/                   ← Code client (Vue.js 3 + Vite)
+    ├── package.json            ← Dépendances frontend
+    ├── vite.config.js          ← Configuration Vite + proxy
+    ├── index.html              ← Point d'entrée HTML (Vite)
+    └── src/
+        ├── main.js             ← Montage de l'application Vue
+        ├── App.vue             ← Composant racine (navbar, layout)
+        ├── assets/
+        │   └── style.css       ← Styles personnalisés
+        ├── router/
+        │   └── index.js        ← Configuration Vue Router
+        ├── components/         ← Composants réutilisables
+        │   ├── GameCard.vue    ← Carte de jeu
+        │   └── LoadingSpinner.vue ← Indicateur de chargement
+        └── views/              ← Pages (une par route)
+            ├── HomeView.vue    ← Catalogue des jeux
+            ├── LoginView.vue   ← Connexion
+            ├── RegisterView.vue← Inscription
+            ├── AddGameView.vue ← Ajout de jeu (RAWG + manuel)
+            ├── MyGamesView.vue ← Ma collection
+            └── ExchangesView.vue ← Gestion des échanges
+----
+
+=== Justification de l'organisation
+
+* **Séparation front / back** : le backend ne contient que l'API, le frontend est un projet Vite indépendant
+* **Routes API préfixées `/api/`** : convention REST claire
+* **Middleware isolé** : réutilisable sur toutes les routes protégées
+* **Un fichier par ressource** côté backend : `auth.js`, `games.js`, `exchanges.js` (principe de responsabilité unique)
+* **Composants / Views** côté frontend : `components/` pour les éléments réutilisables, `views/` pour les pages liées aux routes
+
+
+== Base de données
+
+=== Modèle Conceptuel de Données (MCD)
+
+[source,text]
+----
+┌─────────────┐          ┌──────────────┐          ┌──────────────┐
+│   USERS     │          │    GAMES     │          │  EXCHANGES   │
+├─────────────┤          ├──────────────┤          ├──────────────┤
+│ id (PK)     │──1────N──│ id (PK)      │──1────N──│ id (PK)      │
+│ username    │          │ title        │          │ game_id (FK) │
+│ password    │          │ platform     │          │ requester_id │
+│ created_at  │          │ image        │          │   (FK)       │
+│             │          │ rating       │          │ status       │
+│             │          │ released     │          │ message      │
+│             │          │ owner_id(FK) │          │ created_at   │
+│             │          │ created_at   │          │              │
+└─────────────┘          └──────────────┘          └──────────────┘
+----
+
+=== Relations
+
+[cols="1,1,3", options="header"]
+|===
+| Relation           | Cardinalité | Description
+| users -> games     | 1:N         | Un utilisateur possède 0 ou N jeux
+| users -> exchanges | 1:N         | Un utilisateur envoie 0 ou N demandes
+| games -> exchanges | 1:N         | Un jeu reçoit 0 ou N demandes d'échange
+|===
+
+=== Dictionnaire de données
+
+[cols="1,1,2,1,3", options="header"]
+|===
+| Table     | Colonne      | Type             | Contrainte       | Description
+| users     | id           | INT AUTO_INCREMENT | PK              | Identifiant unique
+| users     | username     | VARCHAR(50)      | UNIQUE, NOT NULL | Pseudo
+| users     | password     | VARCHAR(255)     | NOT NULL         | Mot de passe hashé (bcrypt)
+| users     | created_at   | DATETIME         | DEFAULT NOW      | Date d'inscription
+| games     | id           | INT AUTO_INCREMENT | PK              | Identifiant unique
+| games     | title        | VARCHAR(150)     | NOT NULL         | Titre du jeu
+| games     | platform     | VARCHAR(100)     |                  | Plateforme(s)
+| games     | image        | VARCHAR(500)     |                  | URL de la jaquette
+| games     | rating       | DECIMAL(3,2)     |                  | Note RAWG (/5)
+| games     | released     | VARCHAR(20)      |                  | Date de sortie
+| games     | owner_id     | INT              | FK -> users(id)  | Propriétaire
+| games     | created_at   | DATETIME         | DEFAULT NOW      | Date d'ajout
+| exchanges | id           | INT AUTO_INCREMENT | PK              | Identifiant unique
+| exchanges | game_id      | INT              | FK -> games(id)  | Jeu demandé
+| exchanges | requester_id | INT              | FK -> users(id)  | Demandeur
+| exchanges | status       | ENUM             | DEFAULT 'en_attente' | État de la demande
+| exchanges | message      | TEXT             |                  | Message optionnel
+| exchanges | created_at   | DATETIME         | DEFAULT NOW      | Date de la demande
+|===
+
+=== Script de création (extrait de `database.js`)
+
+[source,sql]
+----
+CREATE TABLE IF NOT EXISTS users (
+    id         INT AUTO_INCREMENT PRIMARY KEY,
+    username   VARCHAR(50)  UNIQUE NOT NULL,
+    password   VARCHAR(255) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS games (
+    id         INT AUTO_INCREMENT PRIMARY KEY,
+    title      VARCHAR(150) NOT NULL,
+    platform   VARCHAR(100),
+    image      VARCHAR(500),
+    rating     DECIMAL(3,2),
+    released   VARCHAR(20),
+    owner_id   INT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS exchanges (
+    id             INT AUTO_INCREMENT PRIMARY KEY,
+    game_id        INT NOT NULL,
+    requester_id   INT NOT NULL,
+    status         ENUM('en_attente','accepte','refuse') DEFAULT 'en_attente',
+    message        TEXT,
+    created_at     DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (game_id)      REFERENCES games(id) ON DELETE CASCADE,
+    FOREIGN KEY (requester_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+----
+
+NOTE: Les tables sont créées automatiquement au démarrage du serveur via la fonction `initDB()`.
+
+
+== Backend — API REST Express.js
+
+=== Tableau des routes (endpoints)
+
+[cols="1,3,1,3", options="header"]
+|===
+| Méthode  | Route                    | Auth ? | Description
+| `POST`   | `/api/auth/register`     | Non    | Inscription d'un utilisateur
+| `POST`   | `/api/auth/login`        | Non    | Connexion
+| `POST`   | `/api/auth/logout`       | Oui    | Déconnexion (destruction de session)
+| `GET`    | `/api/auth/me`           | Non    | Utilisateur courant (session)
+| `GET`    | `/api/games`             | Non    | Liste de tous les jeux
+| `GET`    | `/api/games/mine`        | Oui    | Jeux de l'utilisateur connecté
+| `POST`   | `/api/games`             | Oui    | Ajouter un jeu à sa collection
+| `DELETE` | `/api/games/:id`         | Oui    | Supprimer un de ses jeux
+| `GET`    | `/api/games/search?q=`   | Non    | Recherche via l'API RAWG
+| `POST`   | `/api/exchanges`         | Oui    | Demander un échange
+| `GET`    | `/api/exchanges/received`| Oui    | Demandes reçues (mes jeux)
+| `GET`    | `/api/exchanges/sent`    | Oui    | Mes demandes envoyées
+| `PATCH`  | `/api/exchanges/:id`     | Oui    | Accepter ou refuser un échange
+|===
+
+=== Middleware d'authentification
+
+Le middleware `requireAuth` protège les routes nécessitant une connexion :
+
+[source,javascript]
+----
+// middleware/auth.js
+function requireAuth(req, res, next) {
+    if (!req.session || !req.session.userId) {
+        return res.status(401).json({ error: 'Non authentifié.' });
+    }
+    next(); // L'utilisateur est connecté, on passe au contrôleur
+}
+----
+
+Utilisation sur une route :
+
+[source,javascript]
+----
+// Le middleware est passé en 2e argument
+router.post('/', requireAuth, async (req, res) => {
+    // req.session.userId est garanti d'exister ici
+    const { title, platform } = req.body;
+    await db.query(
+        'INSERT INTO games (title, platform, owner_id) VALUES (?, ?, ?)',
+        [title, platform, req.session.userId]
+    );
+    res.status(201).json({ message: 'Jeu ajouté.' });
+});
+----
+
+=== Hashage de mot de passe avec bcrypt
+
+[source,javascript]
+----
+// À l'inscription : on hash le mot de passe
+const hashedPassword = await bcrypt.hash(password, 10);
+// "10" = nombre de tours de salage (salt rounds)
+
+// À la connexion : on compare le mot de passe saisi au hash stocké
+const match = await bcrypt.compare(passwordSaisi, user.password);
+// Retourne true si le mot de passe est correct
+----
+
+Le mot de passe n'est *jamais* stocké en clair en base. Le sel intégré par bcrypt empêche les attaques par table arc-en-ciel (rainbow tables).
+
+=== Requêtes paramétrées (protection injection SQL)
+
+[source,javascript]
+----
+// MAUVAIS — vulnérable à l'injection SQL
+db.query(`SELECT * FROM users WHERE username = '${username}'`);
+
+// BON — requête paramétrée, le ? est remplacé de façon sécurisée
+db.query('SELECT * FROM users WHERE username = ?', [username]);
+----
+
+Le driver `mysql2` échappe automatiquement les valeurs passées en paramètres.
+
+
+== Frontend — Vue.js 3 Composition API
+
+=== Pourquoi la Composition API ?
+
+La Composition API (Vue 3) remplace l'Options API (`data`, `methods`, `computed`) par des fonctions réactives importées depuis Vue :
+
+[cols="2,3,3", options="header"]
+|===
+| Fonction       | Rôle                                           | Exemple
+| `ref()`        | Variable réactive (primitive ou objet)          | `const count = ref(0)`
+| `computed()`   | Valeur calculée (mise à jour auto)              | `const double = computed(() => count.value * 2)`
+| `onMounted()`  | Hook de cycle de vie (composant affiché)        | `onMounted(() => loadData())`
+| `watch()`      | Observer les changements d'une variable         | `watch(query, () => search())`
+|===
+
+=== Syntaxe `<script setup>`
+
+La syntaxe `<script setup>` est un raccourci de la Composition API. Tout ce qui est déclaré au premier niveau est automatiquement disponible dans le `<template>`, sans `return` explicite :
+
+[source,html]
+----
+<script setup>
+import { ref, onMounted } from 'vue'
+
+const items = ref([])
+const loading = ref(true)
+
+async function loadItems() {
+    const res = await fetch('/api/items')
+    items.value = await res.json()
+    loading.value = false
+}
+
+onMounted(loadItems)
+</script>
+
+<template>
+    <div v-if="loading">Chargement...</div>
+    <ul v-else>
+        <li v-for="item in items" :key="item.id">{{ item.name }}</li>
+    </ul>
+</template>
+----
+
+=== Props et Emits avec `<script setup>`
+
+[source,html]
+----
+<script setup>
+// Déclarer les props reçues du parent
+const props = defineProps({
+    user: { type: Object, default: null }
+})
+
+// Déclarer les événements émis vers le parent
+const emit = defineEmits(['flash', 'login'])
+
+// Émettre un événement
+emit('flash', { type: 'is-success', text: 'Action réussie !' })
+</script>
+----
+
+=== Arbre des composants
+
+[source,text]
+----
+App.vue                        ← Composant racine (navbar, footer, flash)
+├── router-view                ← Zone de contenu dynamique (Vue Router)
+│   ├── HomeView.vue           ← Catalogue des jeux
+│   │   ├── GameCard.vue       ← Carte de jeu (réutilisable)
+│   │   └── LoadingSpinner.vue
+│   ├── LoginView.vue          ← Formulaire de connexion
+│   ├── RegisterView.vue       ← Formulaire d'inscription
+│   ├── AddGameView.vue        ← Ajout de jeu (RAWG + manuel)
+│   │   ├── GameCard.vue
+│   │   └── LoadingSpinner.vue
+│   ├── MyGamesView.vue        ← Ma collection
+│   │   ├── GameCard.vue
+│   │   └── LoadingSpinner.vue
+│   └── ExchangesView.vue      ← Gestion des échanges
+│       └── LoadingSpinner.vue
+----
+
+=== Vue Router — navigation SPA
+
+[source,javascript]
+----
+// router/index.js
+const routes = [
+    { path: '/',          name: 'home',      component: HomeView },
+    { path: '/login',     name: 'login',     component: LoginView },
+    { path: '/add-game',  name: 'addGame',   component: AddGameView,
+      meta: { requiresAuth: true } },
+    // ...
+]
+----
+
+Le *navigation guard* protège les routes côté client :
+
+[source,javascript]
+----
+router.beforeEach(async (to, from, next) => {
+    if (to.meta.requiresAuth) {
+        const res = await fetch('/api/auth/me')
+        const data = await res.json()
+        if (!data.authenticated) {
+            next({ name: 'login' })
+        } else {
+            next()
+        }
+    } else {
+        next()
+    }
+})
+----
+
+=== Composant réutilisable : GameCard.vue
+
+`GameCard` est utilisé dans 3 vues différentes avec des *props* et des *slots* :
+
+[source,html]
+----
+<!-- Utilisation avec un slot nommé pour le footer -->
+<GameCard
+    :title="game.title"
+    :platform="game.platform"
+    :image="game.image"
+    :rating="game.rating"
+    :owner="game.owner_username"
+>
+    <template #footer>
+        <a class="card-footer-item" @click="requestExchange(game)">
+            Proposer un échange
+        </a>
+    </template>
+</GameCard>
+----
+
+Le *slot nommé* `#footer` permet de personnaliser les actions en bas de carte selon le contexte (bouton d'échange, bouton de suppression, ou rien).
+
+=== Bulma CSS — principales classes utilisées
+
+[cols="2,3", options="header"]
+|===
+| Classe                               | Effet
+| `columns is-multiline`               | Grille responsive
+| `column is-4-desktop is-6-tablet`    | Largeur adaptative par breakpoint
+| `card`, `card-content`, `card-footer`| Carte avec contenu et actions
+| `button is-primary is-loading`       | Bouton coloré avec spinner
+| `notification is-success`            | Bandeau de notification
+| `field`, `control`, `input`          | Champs de formulaire
+| `tabs is-boxed`                      | Onglets
+| `tag is-info`                        | Badge / étiquette
+| `navbar is-dark is-fixed-top`        | Barre de navigation fixe sombre
+|===
+
+
+== Fonctionnalités détaillées
+
+=== Inscription
+
+. L'utilisateur remplit le formulaire (`RegisterView.vue`) : pseudo, mot de passe, confirmation
+. Validation côté client : longueur minimale, correspondance des deux mots de passe
+. Envoi `POST /api/auth/register` avec `fetch()`
+. Backend (`routes/auth.js`) : validation -> hashage bcrypt -> insertion en base
+. Réponse JSON -> notification flash « Compte créé » -> redirection vers `/login`
+
+=== Connexion
+
+. Envoi `POST /api/auth/login` depuis `LoginView.vue`
+. Backend : recherche utilisateur -> comparaison bcrypt
+. Si OK : création de session (`req.session.userId` et `req.session.username`)
+. Frontend : événement `emit('login')` -> `App.vue` appelle `/api/auth/me` -> mise à jour de `user`
+. La navbar affiche le nom de l'utilisateur et les liens protégés
+
+=== Ajout de jeu (recherche RAWG)
+
+. L'utilisateur tape dans la barre de recherche (`AddGameView.vue`)
+. Après 400ms de pause (*debounce*), requête `GET /api/games/search?q=...`
+. Le backend (`routes/games.js`) appelle l'API RAWG et renvoie les résultats formatés
+. L'utilisateur clique sur un résultat -> panneau de confirmation avec détails
+. Clic « Ajouter » -> `POST /api/games` avec titre, plateforme, image, note
+. Insertion en base avec `owner_id` = ID de l'utilisateur connecté
+. Alternative : formulaire d'ajout manuel si le jeu n'est pas dans RAWG
+
+=== Catalogue et demande d'échange
+
+. `HomeView.vue` : `GET /api/games` -> liste de tous les jeux avec leur propriétaire
+. Filtrage local via `computed` (champ de recherche côté client, sans requête serveur)
+. Bouton « Proposer un échange » visible *uniquement si* connecté ET pas propriétaire du jeu
+. Clic -> `prompt()` pour message optionnel -> `POST /api/exchanges`
+. Vérifications backend : jeu existant, pas son propre jeu, pas de doublon en attente
+
+=== Gestion des échanges
+
+`ExchangesView.vue` avec deux onglets :
+
+* **Demandes reçues** : les échanges proposés pour mes jeux
+** Badge rouge avec le nombre de demandes en attente (`computed`)
+** Boutons Accepter / Refuser -> `PATCH /api/exchanges/:id`
+* **Mes demandes** : les échanges que j'ai proposés
+** Affichage du statut (En attente / Accepté / Refusé) avec tags colorés
+
+
+== Sécurité
+
+[cols="2,3,2", options="header"]
+|===
+| Mesure                    | Implémentation                                | Menace contrée
+| Hashage bcrypt            | `bcrypt.hash()` avec 10 salt rounds           | Vol de mots de passe
+| Sessions serveur          | `express-session` avec cookie `httpOnly`      | Usurpation d'identité
+| Requêtes paramétrées      | `db.query('...?', [param])`                   | Injection SQL
+| Middleware auth           | `requireAuth` sur routes protégées            | Accès non autorisé
+| Validation des entrées    | Vérification longueur, champs requis          | Données invalides
+| Vérification propriétaire | Contrôle `owner_id` avant suppression/action  | Modification non autorisée
+| Navigation guard          | `router.beforeEach()` côté client             | UX (redirection propre)
+| Cookie httpOnly           | `cookie: { httpOnly: true }`                  | Vol de cookie par XSS
+|===
+
+
+== Tests manuels
+
+=== Scénarios de test
+
+[cols="1,4,3", options="header"]
+|===
+| #  | Scénario                                          | Résultat attendu
+| 1  | S'inscrire avec un pseudo < 3 caractères          | Erreur « entre 3 et 50 caractères »
+| 2  | S'inscrire avec un pseudo existant                | Erreur « déjà pris »
+| 3  | S'inscrire avec des mots de passe différents      | Erreur « ne correspondent pas » (client)
+| 4  | S'inscrire normalement                            | « Compte créé » + redirection login
+| 5  | Se connecter avec mauvais mot de passe            | Erreur « Identifiants incorrects »
+| 6  | Se connecter normalement                          | Redirection accueil + nom affiché
+| 7  | Accéder à `/add-game` sans être connecté          | Redirection vers `/login`
+| 8  | Rechercher « Zelda » dans l'ajout de jeu          | Liste de jeux RAWG affichée
+| 9  | Ajouter un jeu depuis les résultats RAWG          | « Jeu ajouté » + visible dans catalogue
+| 10 | Ajouter un jeu manuellement                       | « Jeu ajouté » + visible dans catalogue
+| 11 | Proposer un échange sur son propre jeu            | Bouton absent de la carte
+| 12 | Proposer un échange sur le jeu d'un autre         | « Demande envoyée »
+| 13 | Re-proposer un échange identique (doublon)        | Erreur « déjà en attente »
+| 14 | Accepter une demande reçue                        | Statut passe à « Accepté »
+| 15 | Refuser une demande reçue                         | Statut passe à « Refusé »
+| 16 | Supprimer un de ses jeux                          | Jeu retiré de « Ma collection »
+| 17 | Se déconnecter                                    | Retour accueil, boutons connexion affichés
+|===
+
+
+== Conformité au référentiel BTS SIO SLAM
+
+=== Compétences mobilisées
+
+[cols="1,2,3", options="header"]
+|===
+| Bloc | Compétence                                       | Élément du projet
+| B1   | Gérer le patrimoine informatique                  | Documentation, architecture, `.env`, `.gitignore`
+| B2   | Répondre aux incidents et aux demandes            | `try/catch`, codes HTTP, messages d'erreur explicites
+| B3   | Développer la présence en ligne                   | Application web complète déployable
+| B4   | Travailler en mode projet                         | Structure de fichiers, Git, séparation front/back
+| B5   | Mettre à disposition un service informatique      | Déploiement, mode opératoire, documentation
+| B6   | Organiser son développement professionnel         | Veille technologique (Vue.js 3, API REST, Vite)
+|===
+
+=== Compétences techniques démontrées
+
+* **Conception de base de données** : MCD, tables relationnelles, clés étrangères, contraintes, `ON DELETE CASCADE`
+* **Développement backend** : API REST, middleware, sessions, sécurité (bcrypt, requêtes préparées)
+* **Développement frontend** : Framework JavaScript (Vue.js 3), Composition API, composants `.vue`, routage SPA
+* **Intégration d'API externe** : Consommation de l'API RAWG (`fetch`, parsing JSON, debounce)
+* **Interface utilisateur** : Framework CSS (Bulma), responsive design, UX (notifications, loaders, slots)
+* **Outillage moderne** : Vite (bundler), proxy de développement, build de production
+* **Gestion de configuration** : Variables d'environnement (`.env`), séparation front/back
+* **Architecture applicative** : Séparation des responsabilités, modularité, composants réutilisables
