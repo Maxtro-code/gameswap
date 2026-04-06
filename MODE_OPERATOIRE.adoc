@@ -1,4 +1,4 @@
-= GameSwap v2 — Mode Opératoire
+= GameSwap — Site d'échange de jeux vidéos
 :author: Projet BTS SIO SLAM
 :revdate: 2026
 :toc: left
@@ -41,17 +41,17 @@
 [source,text]
 ----
 ┌──────────────────────────────────────────────────────┐
-│                    NAVIGATEUR                         │
+│                    NAVIGATEUR                        │
 │  ┌────────────────────────────────────────────────┐  │
 │  │  Vue.js 3 (SPA – Single Page Application)      │  │
-│  │  - Composants .vue (Single File Components)     │  │
-│  │  - Vue Router (navigation côté client)          │  │
-│  │  - Composition API (ref, computed, onMounted)   │  │
-│  │  - Bulma CSS (framework CSS)                    │  │
-│  │  - Vite (bundler / serveur de dev)              │  │
+│  │  - Composants .vue (Single File Components)    │  │
+│  │  - Vue Router (navigation côté client)         │  │
+│  │  - Composition API (ref, computed, onMounted)  │  │
+│  │  - Bulma CSS (framework CSS)                   │  │
+│  │  - Vite (bundler / serveur de dev)             │  │
 │  └───────────────────┬────────────────────────────┘  │
-│                      │ fetch() — requêtes HTTP        │
-└──────────────────────┼────────────────────────────────┘
+│                      │ fetch() — requêtes HTTP       │
+└──────────────────────┼───────────────────────────────┘
                        │
            ┌───────────▼───────────────┐
            │   EXPRESS.JS (Node.js)    │
